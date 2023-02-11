@@ -1,0 +1,69 @@
+---
+version: '3.7'
+
+
+#docker build -t eccentricware/devbox -f DevBoxDockerfile .
+services:
+  traefik:
+    image: traefik
+    container_name: devbox-revproxy
+    command: >
+        --serversTransport.insecureSkipVerify=true
+        --api.insecure=true
+        --api.dashboard=true
+        --api=true
+        --log=true
+        --log.level=DEBUG
+        --accessLog=true
+        --accessLog.bufferingSize=100
+        --providers.docker=true
+        --providers.docker.endpoint=unix:///var/run/docker.sock
+        --providers.docker.exposedbydefault=true
+        --entrypoints.http.address=:80/tcp
+        --entrypoints.https.address=:443/tcp
+        --entrypoints.ssh.address=:2022/tcp
+#        --entrypoints.web.http.redirections.entrypoint.to=https
+#        --entrypoints.web.http.redirections.entrypoint.scheme=https
+#        --accessLog.filePath=/traefik.log
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80" #generic http entrypoint
+      - "443:443" #generic https entrypoint
+      - "2022:2022" # SSH Port Forward
+      - "8080:8080" #traefik web ui
+    volumes:
+      # NOTE: THe TARGET DOCKER SOCK IS NOT IN THE DEFAULT LOCATION;
+      #https://dev.to/bowmanjd/install-docker-on-windows-wsl-without-docker-desktop-34m9
+      #- /mnt/wsl/shared-docker/docker.sock:/var/run/docker.sock:ro # ENSURE READ-ONLY
+      - /var/run/docker.sock:/var/run/docker.sock:ro # ENSURE READ-ONLY
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.prod.noodle.local`)"
+
+
+  devbox:
+    build:
+      context: .
+      dockerfile: ./DevBoxDockerfile
+    image: eccentricware/devbox
+    container_name: devbox      
+    environment:
+      USER_USERNAME: user
+      USER_PASSWORD: Password1
+      # SSH key here, fill this in if you want to SSH in with vscode
+      PUBLIC_KEY: ssh-ed25519\ AAA...C1lZ..0Mn..F...DVbkr9X9\ EccentricBlock
+      LOCAL_DEV_FOLDER: /work
+    volumes:
+      - $PWD/devbox/vs-extensions:/root/.vscode-server/extensions
+      - /var/run/docker.sock:/var/run/docker.sock
+    cap_add:  #  enable ptrace-based debuggers like C++, Go, and Rust.
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    labels:
+      # enable SSH port forward
+      - "traefik.tcp.routers.devbox-ssh.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.devbox-ssh.entrypoints=ssh"
+      - "traefik.tcp.routers.devbox-ssh.service=devbox-ssh-svc"
+      - "traefik.tcp.services.devbox-ssh-svc.loadbalancer.server.port=22"
