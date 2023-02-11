@@ -41,16 +41,6 @@ RUN apt clean && \
         /tmp/* 
 
 
-
-# If We start a new stage, then all of above is cached
-################################################################################
-##  STAGE 2 BUILD - Tools
-################################################################################
-
-FROM base AS tool-install
-
-
-
 ######
 # Install VS Code Server
 ######
@@ -100,12 +90,18 @@ RUN code-server --install-extension nomicfoundation.hardhat-solidity && \
  #--accept-server-license-terms
  #--host 0.0.0.0
 
- 
+# If We start a new stage, then all of above is cached
+################################################################################
+##  STAGE 2 BUILD - Tools
+################################################################################
+
+FROM base AS tool-install
+
 # Install .NET Core
 RUN curl -sL https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -o /tmp/packages-microsoft-prod.deb && \
     dpkg -i /tmp/packages-microsoft-prod.deb && \
     apt update && \ 
-    apt install -y dotnet-sdk 
+    apt install -y dotnet-sdk-7.0
 
 
 #Install NodeJS v18 & NVM
@@ -114,10 +110,8 @@ RUN curl -sL https://deb.nodesource.com/setup_18.x -o /tmp/nodesource_setup.sh &
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash && \
     apt update && \
     apt install nodejs && \
-    npm install -g hardhat && \
-    npm install -g @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers && \
-    npm install -g @nomicfoundation/hardhat-toolbox hardhat-toolbox @openzeppelin/hardhat-upgrade hardhat-upgrade 
-
+    npm install -g --save-dev hardhat && \
+    npm install -g --save-dev @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers @nomicfoundation/hardhat-toolbox
 
 # Install SOLC and SOLC-SELECT
 RUN add-apt-repository ppa:ethereum/ethereum && \
