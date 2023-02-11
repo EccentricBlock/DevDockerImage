@@ -41,6 +41,16 @@ RUN apt clean && \
         /tmp/* 
 
 
+
+# If We start a new stage, then all of above is cached
+################################################################################
+##  STAGE 2 BUILD - Tools
+################################################################################
+
+FROM base AS tool-install
+
+
+
 ######
 # Install VS Code Server
 ######
@@ -90,13 +100,7 @@ RUN code-server --install-extension nomicfoundation.hardhat-solidity && \
  #--accept-server-license-terms
  #--host 0.0.0.0
 
-# If We start a new stage, then all of above is cached
-################################################################################
-##  STAGE 2 BUILD - Tools
-################################################################################
-
-FROM base AS tool-install
-
+ 
 # Install .NET Core
 RUN curl -sL https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -o /tmp/packages-microsoft-prod.deb && \
     dpkg -i /tmp/packages-microsoft-prod.deb && \
